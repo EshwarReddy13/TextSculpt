@@ -18,8 +18,12 @@
     "url": "https://github.com/EshwarReddy13/TextSculpt/issues"
   },
   "homepage": "https://github.com/EshwarReddy13/TextSculpt#readme",
-
   "private": true,
-  "workspaces": ["apps/*", "packages/*"]
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "dependencies": {
+    "react-firebase-hooks": "^5.1.1"
+  }
 }
-
