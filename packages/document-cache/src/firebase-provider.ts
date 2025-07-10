@@ -1,5 +1,5 @@
 import { ref, get, set } from 'firebase/database';
-import { db } from '../../../apps/web/firebase/config'; 
+import { db } from '@textsculpt/firebase';
 import { CachedDocument, CacheProvider } from './types';
 
 export const firebaseProvider: CacheProvider = {
