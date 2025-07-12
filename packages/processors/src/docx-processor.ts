@@ -1,23 +1,54 @@
+import mammoth from 'mammoth';
+
 /**
- * Simulates processing a .docx file.
- * In a real implementation, this would use a library like mammoth.js
- * to convert the file to a specific format (e.g., HTML or a Y.js document).
+ * Processes a .docx file and converts it to HTML.
+ * Uses mammoth.js to extract content from the DOCX file.
  *
- * @param file The file to be processed.
- * @returns A promise that resolves with the processed content.
+ * @param file The .docx file to be processed.
+ * @returns A promise that resolves with the HTML content.
  */
 export async function processDocx(file: File): Promise<string> {
-  console.log(`Processing file: ${file.name}`);
+  try {
+    console.log(`Processing DOCX file: ${file.name}`);
 
-  // Simulate a delay to represent real processing time.
-  await new Promise(resolve => setTimeout(resolve, 2000));
+    // Convert the file to an ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer();
+    
+    // Use mammoth.js to convert DOCX to HTML
+    const result = await mammoth.convertToHtml({ arrayBuffer });
+    
+    if (result.messages.length > 0) {
+      console.warn('Mammoth conversion warnings:', result.messages);
+    }
 
-  const processedContent = `
-    <h1>${file.name}</h1>
-    <p>This is the dummy processed content for the .docx file.</p>
-    <p>File size: ${file.size} bytes</p>
-  `;
+    // Get the HTML content
+    const htmlContent = result.value;
+    
+    // If the HTML is empty, provide a fallback
+    if (!htmlContent || htmlContent.trim() === '') {
+      return `
+        <h1>${file.name}</h1>
+        <p>This document appears to be empty or could not be processed.</p>
+        <p>File size: ${file.size} bytes</p>
+      `;
+    }
 
-  console.log('File processing complete.');
-  return processedContent;
+    console.log('DOCX to HTML conversion completed successfully.');
+    return htmlContent;
+    
+  } catch (error) {
+    console.error('Error processing DOCX file:', error);
+    
+    // Return a user-friendly error message as HTML
+    return `
+      <h1>Error Processing Document</h1>
+      <p>Sorry, we couldn't process the file "${file.name}".</p>
+      <p>Please make sure it's a valid .docx file and try again.</p>
+      <p>File size: ${file.size} bytes</p>
+      <details>
+        <summary>Technical Details</summary>
+        <pre>${error instanceof Error ? error.message : 'Unknown error'}</pre>
+      </details>
+    `;
+  }
 } 

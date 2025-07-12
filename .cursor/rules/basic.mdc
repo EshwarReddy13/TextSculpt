@@ -196,3 +196,12 @@ You must strictly adhere to the following four-step process for every user reque
 - **JSDoc Comments:** Document all public APIs with JSDoc comments
 - **README Updates:** Keep README files updated with new features and changes
 - **Code Comments:** Add comments for complex business logic and algorithms 
+
+# Addtional Notes
+
+## Hydration Safety Rule
+    Hydration Safety:
+    All components must avoid using non-deterministic values (such as Date.now(), Math.random(), or browser-only APIs like window or document) in their initial render.
+    Any logic that depends on the client environment, user authentication, or dynamic data must be run inside a useEffect or after checking typeof window !== 'undefined'.
+    Always provide a loading state until client-only data is available.
+    For contentEditable elements, use suppressHydrationWarning and ensure the initial content is consistent between server and client, or only render them on the client.

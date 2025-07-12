@@ -9,9 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@textsculpt/editor": "*",
     "@firebase/auth": "^1.10.8",
     "@firebase/database": "^1.0.20",
+    "@tailwindcss/typography": "^0.5.16",
+    "@textsculpt/editor": "*",
     "firebase": "^11.10.0",
     "next": "15.3.5",
     "react": "^19.0.0",
