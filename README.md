@@ -1,53 +1,90 @@
 # TextSculpt
 
-TextSculpt is a modern, component-based toolkit for building collaborative, rich text-editing experiences. At its core is a reusable React component that can be integrated into any web application, designed to handle real-time collaboration, document processing, and performance caching out of the box.
+TextSculpt is a modern, component-based toolkit for building collaborative, rich text-editing experiences. At its core is a universal React component that can be integrated into any web application, designed to handle real-time collaboration, document processing, and intelligent caching out of the box.
 
-This repository contains the core TextSculpt packages and a simple web application that demonstrates its capabilities.
+This repository contains the core TextSculpt packages and a demo web application that showcases its capabilities.
 
 ## Core Features
 
-- **Real-Time Collaboration:** Built from the ground up for simultaneous editing, using CRDTs (via Y.js) to ensure a conflict-free writing experience.
-- **Component-Based Architecture:** The editor is delivered as a self-contained React component, making it easy to drop into any application.
-- **Pluggable & Extensible:** Designed with a clean separation of concerns, allowing for custom file processors and caching providers.
-- **Intelligent Caching:** Features a robust document caching layer to ensure fast load times for frequently accessed files, with a "stale-while-revalidate" approach for updates.
-- **Provider-Agnostic Auth:** The core component is not tied to a specific authentication system. It accepts a generic user object, which the host application is responsible for providing.
+- **Real-Time Collaboration:** Built from the ground up for simultaneous editing, using CRDTs (via Y.js) with Firebase Realtime Database as the messaging channel for conflict-free writing experiences.
+- **Universal, Provider-Agnostic Design:** The editor component is completely decoupled from any specific backend, authentication, or storage provider, making it usable in any technology stack.
+- **Intelligent Performance Optimizations:** Advanced caching strategies including optimistic loading, parallel cache/processing, and stale-while-revalidate patterns for optimal user experience.
+- **Robust Error Handling:** Comprehensive error handling with retry logic, graceful degradation, and meaningful user feedback for all operations.
+- **Extensible Architecture:** Clean separation of concerns with pluggable file processors and cache providers, allowing for easy customization and extension.
 
 ## Architecture Overview
 
-TextSculpt is a monorepo managed by npm workspaces. This structure allows us to maintain separate, independently versioned packages for different parts of the system.
+TextSculpt is a monorepo managed by npm workspaces, designed with strict package boundaries and universal applicability.
 
 ```
 TextSculpt/
 ├── apps/
-│   └── web/            # Demo web application showcasing the editor.
+│   └── web/            # Demo Next.js application (for testing/demonstration only)
 │
 └── packages/
-    ├── editor/         # The main "smart" component that developers use.
-    ├── document-cache/ # A generic service for caching processed documents.
-    └── processors/     # A library of functions for converting file types.
+    ├── editor/         # Universal React component (provider-agnostic)
+    ├── document-cache/ # Generic caching service with provider abstraction
+    └── processors/     # File format conversion functions
 ```
 
 ### The Packages
 
-1.  **`@textsculpt/editor` (The Smart Component)**
-    This is the public-facing package that developers will install. It acts as an orchestrator, combining the power of the other packages to provide a simple API (e.g., `<BlockEditor file={file} />`). It handles the entire lifecycle of a document internally.
+1.  **`@textsculpt/editor` (Universal React Component)**
+    The main public-facing package that developers install. It's completely provider-agnostic and orchestrates document processing, caching, and collaboration. Accepts a file and user object, handles the entire document lifecycle internally, and returns the processed/edited file.
 
-2.  **`@textsculpt/processors` (The File Converters)**
-    A library of specialist functions responsible for converting different file formats (like `.docx` or `.xlsx`) into a consistent, editable format recognized by the editor (e.g., a Y.js document).
+2.  **`@textsculpt/processors` (File Format Converters)**
+    A library of specialist functions that convert different file formats (`.docx`, `.txt`, etc.) into a consistent, editable format. All processors follow the `ProcessorFunction` type: `(file: File) => Promise<string>`.
 
-3.  **`@textsculpt/document-cache` (The Caching Engine)**
-    A generic, high-performance service for caching the results of expensive file processing. It uses a timestamp-based validation system to serve cached content when possible and re-process it when the source file has changed. It uses Firebase as its backend but is architected to support other providers.
+3.  **`@textsculpt/document-cache` (Intelligent Caching Engine)**
+    A high-performance, provider-agnostic caching service with Firebase-specific providers. Features timestamp-based validation, cache eviction strategies, and supports multiple cache providers through abstraction.
 
-### The Demo App
+## Backend Features & Performance Enhancements
 
-The `apps/web` project is a simple Next.js application that serves as a live demonstration of how to integrate and use the `@textsculpt/editor` component.
+### Advanced Caching Strategy
+- **Cache-First Design:** Always check cache before processing files for optimal performance
+- **Optimistic Loading:** Show cached content immediately while processing in background
+- **Parallel Operations:** Cache checking and file processing run concurrently when possible
+- **Stale-While-Revalidate:** Serve cached content while updating in background
+- **Intelligent Cache Invalidation:** Use file modification timestamps for cache validation
+- **Memory Management:** Automatic cache eviction for long-running sessions
+
+### Real-Time Collaboration Engine
+- **Y.js Integration:** CRDT-based conflict resolution for seamless collaborative editing
+- **Firebase Realtime Database:** High-speed messaging channel for Y.js synchronization
+- **User Presence:** Real-time indicators showing who's currently editing
+- **Conflict Resolution:** Automatic conflict resolution using CRDT principles
+- **Debounced Updates:** Throttled real-time updates to prevent network overload
+
+### Robust Error Handling & Recovery
+- **Comprehensive Error Boundaries:** React error boundaries prevent app crashes
+- **Retry Logic:** Automatic retry mechanisms for failed operations
+- **Graceful Degradation:** App continues working even when some features fail
+- **Meaningful Feedback:** Clear, actionable error messages for users
+- **Fallback Mechanisms:** Alternative processing paths for unsupported files
+
+### Document Processing Pipeline
+- **Extensible Processors:** Easy to add new file format support
+- **Progress Indicators:** Visual feedback during file processing
+- **Large File Optimization:** Efficient handling of large documents
+- **Format Validation:** Automatic detection and validation of file formats
+- **Error Recovery:** Fallback processing for corrupted or unsupported files
 
 ## How It Works: The Document Lifecycle
 
-1.  **First Load (Cache Miss):** A user provides a file. The system checks for a cached version using the file's unique ID. If none is found, it performs a one-time, server-side conversion of the file into the collaborative Y.js format and saves it to the cache.
-2.  **Subsequent Loads (Cache Hit):** If a user opens the same file again and the source hasn't changed, the system bypasses the conversion step and loads the pre-processed document instantly from the cache.
-3.  **Collaboration:** All connected clients sync their document state using Y.js, with Firebase Realtime Database acting as the high-speed messaging channel.
-4.  **Cache Eviction:** An automated background job periodically cleans the cache, removing documents that haven't been accessed recently (e.g., in the last 30 days) to manage storage costs.
+1.  **Input & Validation:** Component accepts a file and user object (no auth handling required)
+2.  **Cache Check:** System checks for cached version using file's unique identifier
+3.  **Parallel Processing:** If cache miss, file processing begins while showing loading state
+4.  **Optimistic Loading:** If cache hit, content loads immediately while validating freshness
+5.  **Collaborative Editing:** Y.js document syncs across all connected clients via Firebase
+6.  **Output:** Returns processed/edited file to user (no automatic saving to original source)
+
+## UI/UX Enhancements
+
+- **Modern Design System:** Built with Origin UI and shadcn/ui components for consistency
+- **Dark/Light Mode:** Theme switching with `next-themes` integration
+- **Phosphor Icons:** Consistent iconography throughout the interface
+- **Responsive Layout:** Optimized for all screen sizes and devices
+- **Accessibility:** Full keyboard navigation and screen reader support
 
 ## Getting Started
 
@@ -81,10 +118,34 @@ npm run dev
 
 Open your browser to `http://localhost:3000` to view the application.
 
-## Next Steps & Future Plans
+## Extending TextSculpt
 
-This project is currently in the foundational phase. The immediate next steps from our implementation plan are:
-1.  **Implement Real `.docx` Processing:** Replace the current dummy processor with a real implementation using a library like `mammoth.js`.
-2.  **Integrate Y.js:** Fully wire up the editor UI to use a real Y.js document for state management.
-3.  **Implement Auto-Saving:** Add the functionality to save content back to the original source provider.
-4.  **Add Cache Eviction:** Create the automated background job for cleaning up the cache.
+### Adding New File Processors
+Create a new processor function in `packages/processors/src/` following the `ProcessorFunction` type:
+```typescript
+export const processNewFormat: ProcessorFunction = async (file: File) => {
+  // Process file and return string content
+  return processedContent;
+};
+```
+
+### Adding New Cache Providers
+Implement the `CacheProvider` interface in `packages/document-cache/src/`:
+```typescript
+export class CustomCacheProvider implements CacheProvider {
+  async get(key: string): Promise<string | null> { /* ... */ }
+  async set(key: string, value: string): Promise<void> { /* ... */ }
+  async delete(key: string): Promise<void> { /* ... */ }
+}
+```
+
+### Custom Collaboration Backends
+While Firebase Realtime Database is the officially supported backend for real-time collaboration, the architecture supports custom messaging channels for Y.js integration.
+
+## Architecture Principles
+
+- **Universal Applicability:** Core editor works with any backend, auth system, or storage provider
+- **Provider Abstraction:** All provider-specific logic is abstracted behind interfaces
+- **Performance First:** Caching and optimization strategies built into the core architecture
+- **Error Resilience:** Comprehensive error handling at every layer
+- **Extensibility:** Easy to add new processors, cache providers, and collaboration backends
