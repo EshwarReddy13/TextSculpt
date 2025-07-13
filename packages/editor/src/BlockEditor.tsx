@@ -2,97 +2,69 @@
 
 import React, { useState, useEffect } from 'react';
 import { BlockEditorProps } from './types';
-import { getDocumentWithStatus, cacheProcessedDocument } from '@textsculpt/document-cache';
-import { encodeForFirebase } from '@textsculpt/document-cache/src/encoding';
-import { processDocx } from '@textsculpt/processors';
 import { EditorUI } from './components/EditorUI';
+import { useDocumentProcessing, UseDocumentProcessingReturn } from './hooks/useDocumentProcessing';
 
 export default function BlockEditor({ file, user }: BlockEditorProps) {
-  const [content, setContent] = useState<string>('');
-  const [status, setStatus] = useState<'new' | 'cached-db' | 'cached-storage'>('new');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
-  const [timings, setTimings] = useState<{ process?: number; cache?: number; retrieve?: number }>({});
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  useEffect(() => {
-    if (!file || !isClient) return;
+  const {
+    content,
+    loadingState,
+    cacheStatus,
+    metrics,
+    error,
+    retry,
+  }: UseDocumentProcessingReturn = useDocumentProcessing({ file, isClient });
 
-    setIsLoading(true);
-    setError(null);
-    setTimings({});
+  const handleContentChange = (newContent: string) => {
+    // TODO: Implement collaborative editing with Y.js
+    console.log('Content changed:', newContent);
+  };
 
-    const retrieveStart = performance.now();
-    // Try to load from cache first
-    getDocumentWithStatus(encodeForFirebase(file.id))
-      .then(async ({ content: cachedContent, status }) => {
-        const retrieveEnd = performance.now();
-        if (status === 'new') {
-          // Not cached, process the file
-          const processStart = performance.now();
-          processDocx(file.data)
-            .then(async processedContent => {
-              const processEnd = performance.now();
-              setContent(processedContent);
-              setStatus('new');
-              setIsLoading(false);
-              setTimings({
-                process: processEnd - processStart,
-                cache: undefined,
-                retrieve: retrieveEnd - retrieveStart,
-              });
-              // Cache the processed document
-              try {
-                const cacheStart = performance.now();
-                await cacheProcessedDocument(encodeForFirebase(file.id), processedContent);
-                const cacheEnd = performance.now();
-                setTimings(t => ({ ...t, cache: cacheEnd - cacheStart }));
-                console.log('[BlockEditor] Cached processed document');
-              } catch (cacheErr) {
-                console.error('[BlockEditor] Error caching processed document:', cacheErr);
-              }
-            })
-            .catch(err => {
-              console.error('Failed to process document:', err);
-              setError('Could not process the document.');
-              setIsLoading(false);
-            });
-        } else {
-          setContent(cachedContent);
-          setStatus(status);
-          setIsLoading(false);
-          setTimings({
-            process: undefined,
-            cache: undefined,
-            retrieve: retrieveEnd - retrieveStart,
-          });
-        }
-      })
-      .catch(err => {
-        console.error('Failed to load document:', err);
-        setError('Could not load the document.');
-        setIsLoading(false);
-      });
-  }, [file, isClient]);
-
-  if (!isClient || isLoading) {
-    return <div>Loading document...</div>;
+  if (!isClient) {
+    return <div>Loading...</div>;
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return (
+      <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-red-800 dark:text-red-200 font-medium">Error Loading Document</h3>
+            <p className="text-red-600 dark:text-red-300 text-sm mt-1">{error.message}</p>
+            {error.retryable && (
+              <p className="text-red-500 dark:text-red-400 text-xs mt-1">
+                Retry attempt {error.retryCount + 1} of 3
+              </p>
+            )}
+          </div>
+          {error.retryable && (
+            <button
+              onClick={retry}
+              className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition"
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
     <EditorUI
       content={content}
-      onContentChange={newContent => setContent(newContent)}
-      cacheStatus={status}
-      timings={timings}
+      onContentChange={handleContentChange}
+      cacheStatus={cacheStatus}
+      loadingState={loadingState}
+      metrics={metrics}
+      error={error}
+      onRetry={retry}
     />
   );
 }

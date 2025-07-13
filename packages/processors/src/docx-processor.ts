@@ -22,7 +22,17 @@ export async function processDocx(file: File): Promise<string> {
     }
 
     // Get the HTML content
-    const htmlContent = result.value;
+    let htmlContent = result.value;
+
+    // --- FIX FOR HYDRATION ERROR ---
+    // Mammoth wraps the content in <p> tags, but for full documents, it might
+    // produce a full HTML structure. We only want the *inner* content.
+    // A simple regex can extract the content from the body tag if it exists.
+    const bodyContentMatch = htmlContent.match(/<body[^>]*>([\s\S]*)<\/body>/);
+    if (bodyContentMatch && bodyContentMatch[1]) {
+      htmlContent = bodyContentMatch[1];
+    }
+    // --- END FIX ---
     
     // If the HTML is empty, provide a fallback
     if (!htmlContent || htmlContent.trim() === '') {
